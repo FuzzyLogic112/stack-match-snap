@@ -1,16 +1,15 @@
 import { useState, useCallback, useEffect } from 'react';
 import { TileData, TrayTile, GameStatus, TILE_ICONS, TRAY_SIZE, MATCH_COUNT } from '@/types/game';
+import { LevelConfig, getLevelConfig } from '@/config/levels';
 
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
-const generateTiles = (): TileData[] => {
+const generateTiles = (config: LevelConfig): TileData[] => {
   const tiles: TileData[] = [];
-  const layers = 3;
-  const tilesPerLayer = [16, 12, 8];
+  const { layers, tilesPerLayer, iconCount, offsetRandomness, layerSpacing } = config;
   
-  // Generate tiles ensuring we have groups of 3
-  const iconCounts: Record<string, number> = {};
-  const selectedIcons = TILE_ICONS.slice(0, 8);
+  // Select icons based on level config
+  const selectedIcons = TILE_ICONS.slice(0, iconCount);
   
   // Calculate total tiles
   const totalTiles = tilesPerLayer.reduce((a, b) => a + b, 0);
@@ -40,23 +39,23 @@ const generateTiles = (): TileData[] => {
   let iconIndex = 0;
   
   for (let layer = 0; layer < layers; layer++) {
-    const count = tilesPerLayer[layer];
+    const count = tilesPerLayer[layer] || 6;
     const gridSize = Math.ceil(Math.sqrt(count));
     
     for (let i = 0; i < count; i++) {
       const row = Math.floor(i / gridSize);
       const col = i % gridSize;
       
-      // Add some randomness to positions
-      const offsetX = (Math.random() - 0.5) * 20;
-      const offsetY = (Math.random() - 0.5) * 20;
+      // Add randomness to positions based on level config
+      const offsetX = (Math.random() - 0.5) * offsetRandomness;
+      const offsetY = (Math.random() - 0.5) * offsetRandomness;
       
       tiles.push({
         id: generateId(),
         icon: tileIcons[iconIndex % tileIcons.length],
         layer,
-        x: col * 70 + offsetX + (layer * 15) + 30,
-        y: row * 70 + offsetY + (layer * 15) + 30,
+        x: col * 60 + offsetX + (layer * layerSpacing) + 20,
+        y: row * 60 + offsetY + (layer * layerSpacing) + 20,
         isBlocked: false,
         isVisible: true,
       });
@@ -69,22 +68,22 @@ const generateTiles = (): TileData[] => {
 };
 
 const checkBlocked = (tile: TileData, allTiles: TileData[]): boolean => {
-  // A tile is blocked if there's a tile above it (higher layer) overlapping
   return allTiles.some(other => {
     if (other.layer <= tile.layer || !other.isVisible) return false;
     
-    const overlapX = Math.abs(tile.x - other.x) < 50;
-    const overlapY = Math.abs(tile.y - other.y) < 50;
+    const overlapX = Math.abs(tile.x - other.x) < 45;
+    const overlapY = Math.abs(tile.y - other.y) < 45;
     
     return overlapX && overlapY;
   });
 };
 
-export const useGameLogic = () => {
+export const useGameLogic = (levelNumber: number = 1) => {
   const [tiles, setTiles] = useState<TileData[]>([]);
   const [tray, setTray] = useState<TrayTile[]>([]);
   const [gameStatus, setGameStatus] = useState<GameStatus>('playing');
   const [score, setScore] = useState(0);
+  const [currentLevel, setCurrentLevel] = useState<LevelConfig>(getLevelConfig(levelNumber));
 
   const updateBlockedStatus = useCallback((currentTiles: TileData[]) => {
     return currentTiles.map(tile => ({
@@ -93,18 +92,20 @@ export const useGameLogic = () => {
     }));
   }, []);
 
-  const initGame = useCallback(() => {
-    const newTiles = generateTiles();
+  const initGame = useCallback((level?: number) => {
+    const config = getLevelConfig(level ?? levelNumber);
+    setCurrentLevel(config);
+    const newTiles = generateTiles(config);
     const tilesWithBlocked = updateBlockedStatus(newTiles);
     setTiles(tilesWithBlocked);
     setTray([]);
     setGameStatus('playing');
     setScore(0);
-  }, [updateBlockedStatus]);
+  }, [levelNumber, updateBlockedStatus]);
 
   useEffect(() => {
-    initGame();
-  }, [initGame]);
+    initGame(levelNumber);
+  }, [levelNumber]);
 
   const selectTile = useCallback((tileId: string) => {
     if (gameStatus !== 'playing') return;
@@ -117,14 +118,13 @@ export const useGameLogic = () => {
       t.id === tileId ? { ...t, isVisible: false } : t
     );
     
-    // Add to tray - find position to insert (group same icons together)
+    // Add to tray
     const newTrayTile: TrayTile = { id: tile.id, icon: tile.icon };
     let newTray = [...tray];
     
     // Find if there are same icons and insert next to them
     const sameIconIndex = newTray.findIndex(t => t.icon === tile.icon);
     if (sameIconIndex !== -1) {
-      // Find the last occurrence of this icon
       let lastIndex = sameIconIndex;
       for (let i = sameIconIndex; i < newTray.length; i++) {
         if (newTray[i].icon === tile.icon) lastIndex = i;
@@ -135,18 +135,15 @@ export const useGameLogic = () => {
       newTray.push(newTrayTile);
     }
 
-    // Check for matches (3 of same icon)
+    // Check for matches
     const iconCounts: Record<string, TrayTile[]> = {};
     newTray.forEach(t => {
       if (!iconCounts[t.icon]) iconCounts[t.icon] = [];
       iconCounts[t.icon].push(t);
     });
 
-    let matchFound = false;
     Object.entries(iconCounts).forEach(([icon, tiles]) => {
       if (tiles.length >= MATCH_COUNT) {
-        matchFound = true;
-        // Remove matched tiles
         const idsToRemove = tiles.slice(0, MATCH_COUNT).map(t => t.id);
         newTray = newTray.filter(t => !idsToRemove.includes(t.id));
         setScore(prev => prev + 100);
@@ -172,6 +169,7 @@ export const useGameLogic = () => {
     tray,
     gameStatus,
     score,
+    currentLevel,
     selectTile,
     restartGame: initGame,
   };
