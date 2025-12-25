@@ -35,6 +35,33 @@ export type Database = {
         }
         Relationships: []
       }
+      profiles: {
+        Row: {
+          coins: number
+          created_at: string
+          id: string
+          max_level: number
+          updated_at: string
+          username: string
+        }
+        Insert: {
+          coins?: number
+          created_at?: string
+          id: string
+          max_level?: number
+          updated_at?: string
+          username: string
+        }
+        Update: {
+          coins?: number
+          created_at?: string
+          id?: string
+          max_level?: number
+          updated_at?: string
+          username?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useGameLogic } from '@/hooks/useGameLogic';
 import { useLeaderboard } from '@/hooks/useLeaderboard';
+import { useAuth } from '@/hooks/useAuth';
 import { GameBoard } from '@/components/game/GameBoard';
 import { Tray } from '@/components/game/Tray';
 import { GameOverlay } from '@/components/game/GameOverlay';
@@ -10,10 +12,18 @@ import { ScoreSubmitDialog } from '@/components/game/ScoreSubmitDialog';
 import { toast } from 'sonner';
 
 const Index = () => {
+  const navigate = useNavigate();
+  const { user, profile, loading, signOut } = useAuth();
   const { tiles, tray, gameStatus, score, selectTile, restartGame } = useGameLogic();
   const { leaderboard, isLoading, submitScore } = useLeaderboard();
   const [showScoreDialog, setShowScoreDialog] = useState(false);
   const [pendingScore, setPendingScore] = useState(0);
+
+  useEffect(() => {
+    if (!loading && !user) {
+      navigate('/auth');
+    }
+  }, [user, loading, navigate]);
 
   const handleGameEnd = (finalScore: number) => {
     if (finalScore > 0) {
@@ -23,7 +33,6 @@ const Index = () => {
   };
 
   const handleRestart = () => {
-    // Check if game just ended with a score
     if (gameStatus !== 'playing' && score > 0 && !showScoreDialog) {
       handleGameEnd(score);
     } else {
@@ -47,10 +56,37 @@ const Index = () => {
     restartGame();
   };
 
+  const handleLogout = async () => {
+    const { error } = await signOut();
+    if (error) {
+      toast.error('Failed to sign out');
+    } else {
+      navigate('/auth');
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-pulse text-muted-foreground">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!user || !profile) {
+    return null;
+  }
+
   return (
     <div className="min-h-screen bg-background flex flex-col items-center py-6 px-4">
       <div className="w-full max-w-lg">
-        <GameHeader score={score} onRestart={handleRestart} />
+        <GameHeader 
+          score={score} 
+          coins={profile.coins}
+          username={profile.username}
+          onRestart={handleRestart}
+          onLogout={handleLogout}
+        />
         
         <div className="space-y-6">
           <GameBoard tiles={tiles} onSelectTile={selectTile} />
