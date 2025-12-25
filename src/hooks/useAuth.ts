@@ -87,6 +87,22 @@ export const useAuth = () => {
     return { error };
   };
 
+  const updateProfile = async (updates: Partial<Pick<Profile, 'coins' | 'max_level'>>) => {
+    if (!user) return { error: new Error('Not authenticated') };
+    
+    const { error } = await supabase
+      .from('profiles')
+      .update(updates)
+      .eq('id', user.id);
+    
+    if (!error) {
+      // Refresh profile after update
+      await fetchProfile(user.id);
+    }
+    
+    return { error };
+  };
+
   const refreshProfile = () => {
     if (user) {
       fetchProfile(user.id);
@@ -101,6 +117,7 @@ export const useAuth = () => {
     signUp,
     signIn,
     signOut,
+    updateProfile,
     refreshProfile
   };
 };
