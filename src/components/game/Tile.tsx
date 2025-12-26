@@ -4,9 +4,10 @@ import { TileData } from '@/types/game';
 interface TileProps {
   tile: TileData;
   onSelect: (id: string) => void;
+  isHinted?: boolean;
 }
 
-export const Tile = ({ tile, onSelect }: TileProps) => {
+export const Tile = ({ tile, onSelect, isHinted = false }: TileProps) => {
   if (!tile.isVisible) return null;
 
   const handleClick = () => {
@@ -18,7 +19,13 @@ export const Tile = ({ tile, onSelect }: TileProps) => {
   return (
     <motion.button
       initial={{ scale: 0, opacity: 0 }}
-      animate={{ scale: 1, opacity: 1 }}
+      animate={{ 
+        scale: 1, 
+        opacity: 1,
+        boxShadow: isHinted 
+          ? '0 0 20px hsl(var(--primary)), 0 0 40px hsl(var(--primary) / 0.5)' 
+          : undefined
+      }}
       exit={{ scale: 0, opacity: 0 }}
       whileHover={!tile.isBlocked ? { scale: 1.05, y: -2 } : {}}
       whileTap={!tile.isBlocked ? { scale: 0.95 } : {}}
@@ -32,6 +39,7 @@ export const Tile = ({ tile, onSelect }: TileProps) => {
           ? 'bg-muted cursor-not-allowed opacity-60 tile-shadow-sm' 
           : 'bg-tile hover:bg-tile-hover cursor-pointer tile-shadow active:translate-y-1'
         }
+        ${isHinted ? 'ring-2 ring-primary ring-offset-2 animate-pulse' : ''}
       `}
       style={{
         left: tile.x,

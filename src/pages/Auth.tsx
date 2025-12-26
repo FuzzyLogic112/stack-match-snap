@@ -32,7 +32,7 @@ const Auth = () => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!loginEmail || !loginPassword) {
-      toast.error('Please fill in all fields');
+      toast.error('请填写所有字段');
       return;
     }
 
@@ -42,12 +42,12 @@ const Auth = () => {
 
     if (error) {
       if (error.message.includes('Invalid login credentials')) {
-        toast.error('Invalid email or password');
+        toast.error('邮箱或密码错误');
       } else {
         toast.error(error.message);
       }
     } else {
-      toast.success('Welcome back!');
+      toast.success('欢迎回来！');
       navigate('/');
     }
   };
@@ -55,17 +55,17 @@ const Auth = () => {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!registerEmail || !registerPassword || !registerUsername) {
-      toast.error('Please fill in all fields');
+      toast.error('请填写所有字段');
       return;
     }
 
     if (registerPassword.length < 6) {
-      toast.error('Password must be at least 6 characters');
+      toast.error('密码至少需要6个字符');
       return;
     }
 
     if (registerUsername.length < 2) {
-      toast.error('Username must be at least 2 characters');
+      toast.error('用户名至少需要2个字符');
       return;
     }
 
@@ -75,12 +75,12 @@ const Auth = () => {
 
     if (error) {
       if (error.message.includes('already registered')) {
-        toast.error('This email is already registered');
+        toast.error('该邮箱已被注册');
       } else {
         toast.error(error.message);
       }
     } else {
-      toast.success('Account created! You received 500 starter coins!');
+      toast.success('注册成功！获得500金币奖励！');
       navigate('/');
     }
   };
@@ -88,7 +88,7 @@ const Auth = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-pulse text-muted-foreground">Loading...</div>
+        <div className="animate-pulse text-muted-foreground">加载中...</div>
       </div>
     );
   }
@@ -98,29 +98,29 @@ const Auth = () => {
       <div className="mb-8 text-center">
         <div className="flex items-center justify-center gap-3 mb-4">
           <Gamepad2 className="w-10 h-10 text-primary" />
-          <h1 className="text-4xl font-bold text-foreground">Match 3</h1>
+          <h1 className="text-4xl font-bold text-foreground">消消乐</h1>
         </div>
-        <p className="text-muted-foreground">Tap, match, and win coins!</p>
+        <p className="text-muted-foreground">点击、消除、赢金币！</p>
       </div>
 
       <Card className="w-full max-w-md">
         <Tabs defaultValue="login" className="w-full">
           <CardHeader>
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="login">Login</TabsTrigger>
-              <TabsTrigger value="register">Register</TabsTrigger>
+              <TabsTrigger value="login">登录</TabsTrigger>
+              <TabsTrigger value="register">注册</TabsTrigger>
             </TabsList>
           </CardHeader>
           
           <CardContent>
             <TabsContent value="login" className="mt-0">
-              <CardTitle className="mb-2">Welcome Back</CardTitle>
+              <CardTitle className="mb-2">欢迎回来</CardTitle>
               <CardDescription className="mb-4">
-                Sign in to continue your game
+                登录以继续游戏
               </CardDescription>
               <form onSubmit={handleLogin} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="login-email">Email</Label>
+                  <Label htmlFor="login-email">邮箱</Label>
                   <Input
                     id="login-email"
                     type="email"
@@ -131,7 +131,7 @@ const Auth = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="login-password">Password</Label>
+                  <Label htmlFor="login-password">密码</Label>
                   <Input
                     id="login-password"
                     type="password"
@@ -142,31 +142,31 @@ const Auth = () => {
                   />
                 </div>
                 <Button type="submit" className="w-full" disabled={isSubmitting}>
-                  {isSubmitting ? 'Signing in...' : 'Sign In'}
+                  {isSubmitting ? '登录中...' : '登录'}
                 </Button>
               </form>
             </TabsContent>
 
             <TabsContent value="register" className="mt-0">
-              <CardTitle className="mb-2">Create Account</CardTitle>
+              <CardTitle className="mb-2">创建账号</CardTitle>
               <CardDescription className="mb-4 flex items-center gap-2">
                 <Coins className="w-4 h-4 text-primary" />
-                Get 500 starter coins free!
+                免费获得500金币！
               </CardDescription>
               <form onSubmit={handleRegister} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="register-username">Username</Label>
+                  <Label htmlFor="register-username">用户名</Label>
                   <Input
                     id="register-username"
                     type="text"
-                    placeholder="CoolPlayer"
+                    placeholder="酷玩家"
                     value={registerUsername}
                     onChange={(e) => setRegisterUsername(e.target.value)}
                     disabled={isSubmitting}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="register-email">Email</Label>
+                  <Label htmlFor="register-email">邮箱</Label>
                   <Input
                     id="register-email"
                     type="email"
@@ -177,7 +177,7 @@ const Auth = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="register-password">Password</Label>
+                  <Label htmlFor="register-password">密码</Label>
                   <Input
                     id="register-password"
                     type="password"
@@ -188,7 +188,7 @@ const Auth = () => {
                   />
                 </div>
                 <Button type="submit" className="w-full" disabled={isSubmitting}>
-                  {isSubmitting ? 'Creating account...' : 'Create Account'}
+                  {isSubmitting ? '注册中...' : '创建账号'}
                 </Button>
               </form>
             </TabsContent>
