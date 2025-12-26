@@ -1,6 +1,6 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { TileData, TrayTile, GameStatus, TILE_ICONS, TRAY_SIZE, MATCH_COUNT } from '@/types/game';
-import { LevelConfig, getLevelConfig } from '@/config/levels';
+import { LevelConfig, getLevelConfig, generateDailyChallenge } from '@/config/levels';
 
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
@@ -78,12 +78,24 @@ const checkBlocked = (tile: TileData, allTiles: TileData[]): boolean => {
   });
 };
 
-export const useGameLogic = (levelNumber: number = 1) => {
+interface HistoryState {
+  tiles: TileData[];
+  tray: TrayTile[];
+  score: number;
+}
+
+export const useGameLogic = (levelNumber: number = 1, isDailyChallenge: boolean = false) => {
   const [tiles, setTiles] = useState<TileData[]>([]);
   const [tray, setTray] = useState<TrayTile[]>([]);
   const [gameStatus, setGameStatus] = useState<GameStatus>('playing');
   const [score, setScore] = useState(0);
-  const [currentLevel, setCurrentLevel] = useState<LevelConfig>(getLevelConfig(levelNumber));
+  const [currentLevel, setCurrentLevel] = useState<LevelConfig>(
+    isDailyChallenge ? generateDailyChallenge() : getLevelConfig(levelNumber)
+  );
+  const [hintedTiles, setHintedTiles] = useState<Set<string>>(new Set());
+  
+  const historyRef = useRef<HistoryState[]>([]);
+  const onMatchRef = useRef<(() => void) | null>(null);
 
   const updateBlockedStatus = useCallback((currentTiles: TileData[]) => {
     return currentTiles.map(tile => ({
@@ -92,8 +104,8 @@ export const useGameLogic = (levelNumber: number = 1) => {
     }));
   }, []);
 
-  const initGame = useCallback((level?: number) => {
-    const config = getLevelConfig(level ?? levelNumber);
+  const initGame = useCallback((level?: number, isDaily?: boolean) => {
+    const config = isDaily ? generateDailyChallenge() : getLevelConfig(level ?? levelNumber);
     setCurrentLevel(config);
     const newTiles = generateTiles(config);
     const tilesWithBlocked = updateBlockedStatus(newTiles);
@@ -101,17 +113,30 @@ export const useGameLogic = (levelNumber: number = 1) => {
     setTray([]);
     setGameStatus('playing');
     setScore(0);
+    setHintedTiles(new Set());
+    historyRef.current = [];
   }, [levelNumber, updateBlockedStatus]);
 
   useEffect(() => {
-    initGame(levelNumber);
-  }, [levelNumber]);
+    initGame(levelNumber, isDailyChallenge);
+  }, [levelNumber, isDailyChallenge]);
 
   const selectTile = useCallback((tileId: string) => {
     if (gameStatus !== 'playing') return;
     
     const tile = tiles.find(t => t.id === tileId);
     if (!tile || tile.isBlocked || !tile.isVisible) return;
+
+    // Save history before making changes
+    historyRef.current.push({
+      tiles: tiles.map(t => ({ ...t })),
+      tray: tray.map(t => ({ ...t })),
+      score,
+    });
+    // Keep only last 10 states
+    if (historyRef.current.length > 10) {
+      historyRef.current.shift();
+    }
 
     // Remove tile from board
     const newTiles = tiles.map(t => 
@@ -142,13 +167,22 @@ export const useGameLogic = (levelNumber: number = 1) => {
       iconCounts[t.icon].push(t);
     });
 
-    Object.entries(iconCounts).forEach(([icon, tiles]) => {
-      if (tiles.length >= MATCH_COUNT) {
-        const idsToRemove = tiles.slice(0, MATCH_COUNT).map(t => t.id);
+    let matched = false;
+    Object.entries(iconCounts).forEach(([icon, matchingTiles]) => {
+      if (matchingTiles.length >= MATCH_COUNT) {
+        const idsToRemove = matchingTiles.slice(0, MATCH_COUNT).map(t => t.id);
         newTray = newTray.filter(t => !idsToRemove.includes(t.id));
         setScore(prev => prev + 100);
+        matched = true;
       }
     });
+
+    if (matched && onMatchRef.current) {
+      onMatchRef.current();
+    }
+
+    // Clear hints after action
+    setHintedTiles(new Set());
 
     // Update blocked status
     const updatedTiles = updateBlockedStatus(newTiles);
@@ -162,7 +196,91 @@ export const useGameLogic = (levelNumber: number = 1) => {
     } else if (newTray.length >= TRAY_SIZE) {
       setGameStatus('lost');
     }
-  }, [tiles, tray, gameStatus, updateBlockedStatus]);
+    
+    return matched;
+  }, [tiles, tray, gameStatus, score, updateBlockedStatus]);
+
+  // Power-up: Shuffle
+  const shuffleTiles = useCallback(() => {
+    if (gameStatus !== 'playing') return false;
+    
+    const visibleTiles = tiles.filter(t => t.isVisible);
+    const positions = visibleTiles.map(t => ({ x: t.x, y: t.y, layer: t.layer }));
+    
+    // Shuffle positions
+    for (let i = positions.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [positions[i], positions[j]] = [positions[j], positions[i]];
+    }
+    
+    let posIndex = 0;
+    const newTiles = tiles.map(t => {
+      if (t.isVisible) {
+        const pos = positions[posIndex++];
+        return { ...t, x: pos.x, y: pos.y, layer: pos.layer };
+      }
+      return t;
+    });
+    
+    const updatedTiles = updateBlockedStatus(newTiles);
+    setTiles(updatedTiles);
+    setHintedTiles(new Set());
+    return true;
+  }, [tiles, gameStatus, updateBlockedStatus]);
+
+  // Power-up: Undo
+  const undoLastMove = useCallback(() => {
+    if (gameStatus !== 'playing' || historyRef.current.length === 0) return false;
+    
+    const lastState = historyRef.current.pop()!;
+    setTiles(lastState.tiles);
+    setTray(lastState.tray);
+    setScore(lastState.score);
+    setHintedTiles(new Set());
+    return true;
+  }, [gameStatus]);
+
+  // Power-up: Remove 3 tiles from tray
+  const removeThreeFromTray = useCallback(() => {
+    if (gameStatus !== 'playing' || tray.length === 0) return false;
+    
+    const toRemove = Math.min(3, tray.length);
+    const newTray = tray.slice(toRemove);
+    setTray(newTray);
+    return true;
+  }, [tray, gameStatus]);
+
+  // Power-up: Hint - find matching tiles
+  const showHint = useCallback(() => {
+    if (gameStatus !== 'playing') return false;
+    
+    const visibleTiles = tiles.filter(t => t.isVisible && !t.isBlocked);
+    const iconGroups: Record<string, TileData[]> = {};
+    
+    visibleTiles.forEach(t => {
+      if (!iconGroups[t.icon]) iconGroups[t.icon] = [];
+      iconGroups[t.icon].push(t);
+    });
+    
+    // Find icons with at least 3 available
+    const hints = new Set<string>();
+    Object.values(iconGroups).forEach(group => {
+      if (group.length >= 3) {
+        group.slice(0, 3).forEach(t => hints.add(t.id));
+      }
+    });
+    
+    setHintedTiles(hints);
+    
+    // Clear hints after 3 seconds
+    setTimeout(() => setHintedTiles(new Set()), 3000);
+    
+    return hints.size > 0;
+  }, [tiles, gameStatus]);
+
+  const setOnMatch = useCallback((callback: () => void) => {
+    onMatchRef.current = callback;
+  }, []);
 
   return {
     tiles,
@@ -170,7 +288,14 @@ export const useGameLogic = (levelNumber: number = 1) => {
     gameStatus,
     score,
     currentLevel,
+    hintedTiles,
     selectTile,
     restartGame: initGame,
+    shuffleTiles,
+    undoLastMove,
+    removeThreeFromTray,
+    showHint,
+    setOnMatch,
+    canUndo: historyRef.current.length > 0,
   };
 };

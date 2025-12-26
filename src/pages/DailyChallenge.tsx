@@ -1,30 +1,36 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useGameLogic } from '@/hooks/useGameLogic';
 import { useAuth } from '@/hooks/useAuth';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
 import { POWER_UPS } from '@/config/powerups';
-import { getTierForLevel, DIFFICULTY_TIERS } from '@/config/levels';
 import { GameBoard } from '@/components/game/GameBoard';
 import { Tray } from '@/components/game/Tray';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { ArrowLeft, RefreshCw, Star, Coins } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Star, Coins, Calendar } from 'lucide-react';
 
-const Play = () => {
+const DailyChallenge = () => {
   const navigate = useNavigate();
-  const { levelId } = useParams();
-  const levelNumber = parseInt(levelId || '1', 10);
-  
   const { user, profile, loading, updateProfile } = useAuth();
   const { playSelect, playMatch, playWin, playLose, playPowerUp, playButton, playError } = useSoundEffects();
   
   const { 
     tiles, tray, gameStatus, score, currentLevel, hintedTiles,
     selectTile, restartGame, shuffleTiles, undoLastMove, removeThreeFromTray, showHint, setOnMatch
-  } = useGameLogic(levelNumber);
+  } = useGameLogic(1, true); // isDailyChallenge = true
   
   const [hasAwarded, setHasAwarded] = useState(false);
+  const [hasPlayedToday, setHasPlayedToday] = useState(false);
+
+  // Check if already completed today
+  useEffect(() => {
+    const today = new Date().toDateString();
+    const lastPlayed = localStorage.getItem('daily_challenge_date');
+    if (lastPlayed === today) {
+      setHasPlayedToday(true);
+    }
+  }, []);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -32,44 +38,32 @@ const Play = () => {
     }
   }, [user, loading, navigate]);
 
-  // Check if user has access to this level
-  useEffect(() => {
-    if (!loading && profile && levelNumber > profile.max_level) {
-      toast.error('关卡未解锁！请先完成之前的关卡。');
-      navigate('/');
-    }
-  }, [loading, profile, levelNumber, navigate]);
-
   useEffect(() => {
     setOnMatch(() => playMatch);
   }, [setOnMatch, playMatch]);
 
-  // Handle win condition - award coins and unlock next level
+  // Handle win condition
   useEffect(() => {
     if (gameStatus === 'won' && profile && !hasAwarded) {
       setHasAwarded(true);
       playWin();
       
-      const updates: { coins: number; max_level?: number } = {
-        coins: profile.coins + currentLevel.coinReward
-      };
+      // Mark as completed today
+      localStorage.setItem('daily_challenge_date', new Date().toDateString());
       
-      // Unlock next level if this was the highest (max 60)
-      if (levelNumber >= profile.max_level && levelNumber < 60) {
-        updates.max_level = levelNumber + 1;
-      }
+      const reward = currentLevel.coinReward;
       
-      updateProfile(updates).then(({ error }) => {
+      updateProfile({ coins: profile.coins + reward }).then(({ error }) => {
         if (error) {
           toast.error('保存进度失败');
         } else {
-          toast.success(`+${currentLevel.coinReward} 金币！关卡完成！`);
+          toast.success(`+${reward} 金币！每日挑战完成！`);
         }
       });
     } else if (gameStatus === 'lost') {
       playLose();
     }
-  }, [gameStatus, profile, hasAwarded, currentLevel, levelNumber, updateProfile, playWin, playLose]);
+  }, [gameStatus, profile, hasAwarded, currentLevel, updateProfile, playWin, playLose]);
 
   const handleTileSelect = (tileId: string) => {
     playSelect();
@@ -79,22 +73,12 @@ const Play = () => {
   const handleRestart = () => {
     playButton();
     setHasAwarded(false);
-    restartGame(levelNumber);
+    restartGame(1, true);
   };
 
   const handleBackToLevels = () => {
     playButton();
     navigate('/');
-  };
-
-  const handleNextLevel = () => {
-    playButton();
-    setHasAwarded(false);
-    if (levelNumber < 60) {
-      navigate(`/play/${levelNumber + 1}`);
-    } else {
-      navigate('/');
-    }
   };
 
   const usePowerUp = (powerUpId: string) => {
@@ -151,8 +135,8 @@ const Play = () => {
     );
   }
 
-  const tier = getTierForLevel(levelNumber);
-  const tierInfo = DIFFICULTY_TIERS.find(t => t.id === tier);
+  const today = new Date();
+  const dateStr = `${today.getMonth() + 1}月${today.getDate()}日`;
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center py-6 px-4">
@@ -169,9 +153,9 @@ const Play = () => {
               <ArrowLeft className="w-4 h-4 mr-1" />
               返回
             </Button>
-            <div className="text-center">
-              <h1 className="text-xl font-bold text-foreground">{currentLevel.name}</h1>
-              <span className="text-xs text-muted-foreground">{tierInfo?.nameCn}</span>
+            <div className="flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-accent" />
+              <h1 className="text-xl font-bold text-foreground">每日挑战</h1>
             </div>
             <Button
               variant="outline"
@@ -187,6 +171,10 @@ const Play = () => {
             <div className="flex items-center gap-2 bg-secondary/50 rounded-xl px-4 py-2">
               <Coins className="w-5 h-5 text-primary" />
               <span className="font-bold text-foreground">{profile.coins}</span>
+            </div>
+            
+            <div className="text-sm text-muted-foreground">
+              {dateStr}
             </div>
             
             <div className="flex items-center gap-2 bg-secondary/50 rounded-xl px-4 py-2">
@@ -207,7 +195,6 @@ const Play = () => {
                   onClick={() => usePowerUp(powerUp.id)}
                   disabled={count <= 0 || gameStatus !== 'playing'}
                   className="relative gap-1 text-xs"
-                  title={powerUp.nameCn}
                 >
                   <span>{powerUp.icon}</span>
                   <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs rounded-full w-4 h-4 flex items-center justify-center">
@@ -225,7 +212,7 @@ const Play = () => {
         </div>
 
         <p className="text-center text-sm text-muted-foreground mt-4">
-          {currentLevel.description}
+          奖励: +{currentLevel.coinReward} 金币
         </p>
       </div>
 
@@ -236,27 +223,20 @@ const Play = () => {
             {gameStatus === 'won' ? (
               <>
                 <div className="text-5xl mb-4">🎉</div>
-                <h2 className="text-2xl font-bold text-foreground mb-2">关卡完成！</h2>
+                <h2 className="text-2xl font-bold text-foreground mb-2">每日挑战完成！</h2>
                 <p className="text-muted-foreground mb-2">得分: {score}</p>
                 <div className="flex items-center justify-center gap-2 text-primary mb-6">
                   <Coins className="w-5 h-5" />
                   <span className="font-bold">+{currentLevel.coinReward} 金币</span>
                 </div>
-                <div className="flex gap-3">
-                  <Button variant="outline" onClick={handleBackToLevels}>
-                    返回主页
-                  </Button>
-                  {levelNumber < 60 && (
-                    <Button onClick={handleNextLevel}>
-                      下一关
-                    </Button>
-                  )}
-                </div>
+                <Button onClick={handleBackToLevels} className="w-full">
+                  返回主页
+                </Button>
               </>
             ) : (
               <>
                 <div className="text-5xl mb-4">😅</div>
-                <h2 className="text-2xl font-bold text-foreground mb-2">槽位已满！</h2>
+                <h2 className="text-2xl font-bold text-foreground mb-2">挑战失败</h2>
                 <p className="text-muted-foreground mb-6">得分: {score}</p>
                 <div className="flex gap-3">
                   <Button variant="outline" onClick={handleBackToLevels}>
@@ -275,4 +255,4 @@ const Play = () => {
   );
 };
 
-export default Play;
+export default DailyChallenge;
