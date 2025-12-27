@@ -50,9 +50,24 @@ export const useLeaderboard = () => {
   }, []);
 
   const submitScore = async (playerName: string, score: number) => {
+    // Client-side validation (defense in depth - database also has constraints)
+    if (score < 0 || score > 1000000) {
+      return { error: new Error('无效分数') };
+    }
+    
+    const trimmedName = playerName.trim();
+    if (!trimmedName || trimmedName.length > 20) {
+      return { error: new Error('玩家名称必须在1-20个字符之间') };
+    }
+    
+    // Only allow alphanumeric, spaces, underscores, hyphens, and Chinese characters
+    if (!/^[\w\s\u4e00-\u9fa5_-]+$/.test(trimmedName)) {
+      return { error: new Error('玩家名称包含无效字符') };
+    }
+    
     const { error } = await supabase
       .from('leaderboard')
-      .insert([{ player_name: playerName, score }]);
+      .insert([{ player_name: trimmedName, score }]);
 
     if (!error) {
       await fetchLeaderboard();

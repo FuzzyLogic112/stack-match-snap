@@ -12,7 +12,7 @@ import { ArrowLeft, RefreshCw, Star, Coins, Calendar } from 'lucide-react';
 
 const DailyChallenge = () => {
   const navigate = useNavigate();
-  const { user, profile, loading, updateProfile } = useAuth();
+  const { user, profile, loading, completeDailyChallenge, usePowerup, checkDailyChallengeCompleted } = useAuth();
   const { playSelect, playMatch, playWin, playLose, playPowerUp, playButton, playError } = useSoundEffects();
   
   const { 
@@ -22,15 +22,19 @@ const DailyChallenge = () => {
   
   const [hasAwarded, setHasAwarded] = useState(false);
   const [hasPlayedToday, setHasPlayedToday] = useState(false);
+  const [checkingCompletion, setCheckingCompletion] = useState(true);
 
-  // Check if already completed today
+  // Check if already completed today via server-side
   useEffect(() => {
-    const today = new Date().toDateString();
-    const lastPlayed = localStorage.getItem('daily_challenge_date');
-    if (lastPlayed === today) {
-      setHasPlayedToday(true);
-    }
-  }, []);
+    const checkCompletion = async () => {
+      if (user) {
+        const completed = await checkDailyChallengeCompleted();
+        setHasPlayedToday(completed);
+      }
+      setCheckingCompletion(false);
+    };
+    checkCompletion();
+  }, [user, checkDailyChallengeCompleted]);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -44,26 +48,25 @@ const DailyChallenge = () => {
 
   // Handle win condition
   useEffect(() => {
-    if (gameStatus === 'won' && profile && !hasAwarded) {
+    if (gameStatus === 'won' && profile && !hasAwarded && !hasPlayedToday) {
       setHasAwarded(true);
       playWin();
       
-      // Mark as completed today
-      localStorage.setItem('daily_challenge_date', new Date().toDateString());
-      
       const reward = currentLevel.coinReward;
       
-      updateProfile({ coins: profile.coins + reward }).then(({ error }) => {
-        if (error) {
+      // Use server-side RPC to complete daily challenge
+      completeDailyChallenge(reward).then(({ success, error }) => {
+        if (error || !success) {
           toast.error('保存进度失败');
         } else {
           toast.success(`+${reward} 金币！每日挑战完成！`);
+          setHasPlayedToday(true);
         }
       });
     } else if (gameStatus === 'lost') {
       playLose();
     }
-  }, [gameStatus, profile, hasAwarded, currentLevel, updateProfile, playWin, playLose]);
+  }, [gameStatus, profile, hasAwarded, hasPlayedToday, currentLevel, completeDailyChallenge, playWin, playLose]);
 
   const handleTileSelect = (tileId: string) => {
     playSelect();
@@ -81,11 +84,10 @@ const DailyChallenge = () => {
     navigate('/');
   };
 
-  const usePowerUp = (powerUpId: string) => {
+  const handleUsePowerUp = async (powerUpId: string) => {
     playButton();
     
-    const inventory = JSON.parse(localStorage.getItem('powerup_inventory') || '{}');
-    const count = inventory[powerUpId] || 0;
+    const count = getInventoryCount(powerUpId);
     
     if (count <= 0) {
       playError();
@@ -112,10 +114,16 @@ const DailyChallenge = () => {
     }
     
     if (success) {
-      playPowerUp();
-      inventory[powerUpId] = count - 1;
-      localStorage.setItem('powerup_inventory', JSON.stringify(inventory));
-      toast.success(`使用了 ${powerUp?.nameCn || '道具'}！`);
+      // Use server-side RPC to decrement powerup
+      const { success: rpcSuccess, error } = await usePowerup(powerUpId);
+      
+      if (rpcSuccess) {
+        playPowerUp();
+        toast.success(`使用了 ${powerUp?.nameCn || '道具'}！`);
+      } else {
+        playError();
+        toast.error('道具使用失败');
+      }
     } else {
       playError();
       toast.error('无法使用该道具');
@@ -123,11 +131,17 @@ const DailyChallenge = () => {
   };
 
   const getInventoryCount = (powerUpId: string): number => {
-    const inventory = JSON.parse(localStorage.getItem('powerup_inventory') || '{}');
-    return inventory[powerUpId] || 0;
+    if (!profile) return 0;
+    switch (powerUpId) {
+      case 'shuffle': return profile.shuffle_count;
+      case 'undo': return profile.undo_count;
+      case 'remove_three': return profile.remove_three_count;
+      case 'hint': return profile.hint_count;
+      default: return 0;
+    }
   };
 
-  if (loading || !profile) {
+  if (loading || !profile || checkingCompletion) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-pulse text-muted-foreground">加载中...</div>
@@ -192,7 +206,7 @@ const DailyChallenge = () => {
                   key={powerUp.id}
                   variant="outline"
                   size="sm"
-                  onClick={() => usePowerUp(powerUp.id)}
+                  onClick={() => handleUsePowerUp(powerUp.id)}
                   disabled={count <= 0 || gameStatus !== 'playing'}
                   className="relative gap-1 text-xs"
                 >
@@ -204,6 +218,12 @@ const DailyChallenge = () => {
               );
             })}
           </div>
+
+          {hasPlayedToday && (
+            <div className="text-center p-2 bg-primary/10 rounded-xl">
+              <span className="text-sm text-primary font-medium">✅ 今日挑战已完成</span>
+            </div>
+          )}
         </div>
         
         <div className="space-y-6">
@@ -225,10 +245,12 @@ const DailyChallenge = () => {
                 <div className="text-5xl mb-4">🎉</div>
                 <h2 className="text-2xl font-bold text-foreground mb-2">每日挑战完成！</h2>
                 <p className="text-muted-foreground mb-2">得分: {score}</p>
-                <div className="flex items-center justify-center gap-2 text-primary mb-6">
-                  <Coins className="w-5 h-5" />
-                  <span className="font-bold">+{currentLevel.coinReward} 金币</span>
-                </div>
+                {!hasPlayedToday && (
+                  <div className="flex items-center justify-center gap-2 text-primary mb-6">
+                    <Coins className="w-5 h-5" />
+                    <span className="font-bold">+{currentLevel.coinReward} 金币</span>
+                  </div>
+                )}
                 <Button onClick={handleBackToLevels} className="w-full">
                   返回主页
                 </Button>

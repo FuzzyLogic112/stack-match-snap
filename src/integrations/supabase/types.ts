@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      daily_challenges: {
+        Row: {
+          challenge_date: string
+          coins_awarded: number
+          completed_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          challenge_date?: string
+          coins_awarded?: number
+          completed_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          challenge_date?: string
+          coins_awarded?: number
+          completed_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       leaderboard: {
         Row: {
           created_at: string
@@ -39,24 +63,36 @@ export type Database = {
         Row: {
           coins: number
           created_at: string
+          hint_count: number
           id: string
           max_level: number
+          remove_three_count: number
+          shuffle_count: number
+          undo_count: number
           updated_at: string
           username: string
         }
         Insert: {
           coins?: number
           created_at?: string
+          hint_count?: number
           id: string
           max_level?: number
+          remove_three_count?: number
+          shuffle_count?: number
+          undo_count?: number
           updated_at?: string
           username: string
         }
         Update: {
           coins?: number
           created_at?: string
+          hint_count?: number
           id?: string
           max_level?: number
+          remove_three_count?: number
+          shuffle_count?: number
+          undo_count?: number
           updated_at?: string
           username?: string
         }
@@ -67,7 +103,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      check_daily_challenge_completed: { Args: never; Returns: boolean }
+      complete_daily_challenge: {
+        Args: { p_coin_reward: number }
+        Returns: Json
+      }
+      complete_level: {
+        Args: { p_coin_reward: number; p_level_num: number }
+        Returns: Json
+      }
+      purchase_powerup: {
+        Args: { p_powerup_id: string; p_price: number }
+        Returns: Json
+      }
+      use_powerup: { Args: { p_powerup_id: string }; Returns: Json }
     }
     Enums: {
       [_ in never]: never

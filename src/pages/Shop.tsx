@@ -10,7 +10,7 @@ import { ArrowLeft, Coins, ShoppingBag } from 'lucide-react';
 
 const Shop = () => {
   const navigate = useNavigate();
-  const { user, profile, loading, updateProfile, refreshProfile } = useAuth();
+  const { user, profile, loading, purchasePowerup } = useAuth();
   const { playButton, playPowerUp, playError } = useSoundEffects();
 
   useEffect(() => {
@@ -30,30 +30,27 @@ const Shop = () => {
       return;
     }
     
-    // Get current inventory from localStorage
-    const inventory = JSON.parse(localStorage.getItem('powerup_inventory') || '{}');
-    inventory[powerUpId] = (inventory[powerUpId] || 0) + 1;
-    localStorage.setItem('powerup_inventory', JSON.stringify(inventory));
+    // Use server-side RPC for purchase
+    const { success, error } = await purchasePowerup(powerUpId, price);
     
-    // Deduct coins
-    const { error } = await updateProfile({ coins: profile.coins - price });
-    
-    if (error) {
+    if (error || !success) {
       playError();
       toast.error('购买失败，请重试');
-      // Rollback inventory
-      inventory[powerUpId] = (inventory[powerUpId] || 1) - 1;
-      localStorage.setItem('powerup_inventory', JSON.stringify(inventory));
     } else {
       playPowerUp();
       toast.success(`成功购买 ${nameCn}！`);
-      refreshProfile();
     }
   };
 
   const getInventoryCount = (powerUpId: string): number => {
-    const inventory = JSON.parse(localStorage.getItem('powerup_inventory') || '{}');
-    return inventory[powerUpId] || 0;
+    if (!profile) return 0;
+    switch (powerUpId) {
+      case 'shuffle': return profile.shuffle_count;
+      case 'undo': return profile.undo_count;
+      case 'remove_three': return profile.remove_three_count;
+      case 'hint': return profile.hint_count;
+      default: return 0;
+    }
   };
 
   if (loading || !profile) {
