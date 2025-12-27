@@ -16,7 +16,7 @@ const Play = () => {
   const { levelId } = useParams();
   const levelNumber = parseInt(levelId || '1', 10);
   
-  const { user, profile, loading, updateProfile } = useAuth();
+  const { user, profile, loading, completeLevel, usePowerup, refreshProfile } = useAuth();
   const { playSelect, playMatch, playWin, playLose, playPowerUp, playButton, playError } = useSoundEffects();
   
   const { 
@@ -44,23 +44,15 @@ const Play = () => {
     setOnMatch(() => playMatch);
   }, [setOnMatch, playMatch]);
 
-  // Handle win condition - award coins and unlock next level
+  // Handle win condition - award coins and unlock next level via server-side RPC
   useEffect(() => {
     if (gameStatus === 'won' && profile && !hasAwarded) {
       setHasAwarded(true);
       playWin();
       
-      const updates: { coins: number; max_level?: number } = {
-        coins: profile.coins + currentLevel.coinReward
-      };
-      
-      // Unlock next level if this was the highest (max 60)
-      if (levelNumber >= profile.max_level && levelNumber < 60) {
-        updates.max_level = levelNumber + 1;
-      }
-      
-      updateProfile(updates).then(({ error }) => {
-        if (error) {
+      // Use server-side RPC to complete level
+      completeLevel(levelNumber, currentLevel.coinReward).then(({ success, error }) => {
+        if (error || !success) {
           toast.error('保存进度失败');
         } else {
           toast.success(`+${currentLevel.coinReward} 金币！关卡完成！`);
@@ -69,7 +61,7 @@ const Play = () => {
     } else if (gameStatus === 'lost') {
       playLose();
     }
-  }, [gameStatus, profile, hasAwarded, currentLevel, levelNumber, updateProfile, playWin, playLose]);
+  }, [gameStatus, profile, hasAwarded, currentLevel, levelNumber, completeLevel, playWin, playLose]);
 
   const handleTileSelect = (tileId: string) => {
     playSelect();
@@ -97,11 +89,10 @@ const Play = () => {
     }
   };
 
-  const usePowerUp = (powerUpId: string) => {
+  const handleUsePowerUp = async (powerUpId: string) => {
     playButton();
     
-    const inventory = JSON.parse(localStorage.getItem('powerup_inventory') || '{}');
-    const count = inventory[powerUpId] || 0;
+    const count = getInventoryCount(powerUpId);
     
     if (count <= 0) {
       playError();
@@ -128,10 +119,16 @@ const Play = () => {
     }
     
     if (success) {
-      playPowerUp();
-      inventory[powerUpId] = count - 1;
-      localStorage.setItem('powerup_inventory', JSON.stringify(inventory));
-      toast.success(`使用了 ${powerUp?.nameCn || '道具'}！`);
+      // Use server-side RPC to decrement powerup
+      const { success: rpcSuccess, error } = await usePowerup(powerUpId);
+      
+      if (rpcSuccess) {
+        playPowerUp();
+        toast.success(`使用了 ${powerUp?.nameCn || '道具'}！`);
+      } else {
+        playError();
+        toast.error('道具使用失败');
+      }
     } else {
       playError();
       toast.error('无法使用该道具');
@@ -139,8 +136,14 @@ const Play = () => {
   };
 
   const getInventoryCount = (powerUpId: string): number => {
-    const inventory = JSON.parse(localStorage.getItem('powerup_inventory') || '{}');
-    return inventory[powerUpId] || 0;
+    if (!profile) return 0;
+    switch (powerUpId) {
+      case 'shuffle': return profile.shuffle_count;
+      case 'undo': return profile.undo_count;
+      case 'remove_three': return profile.remove_three_count;
+      case 'hint': return profile.hint_count;
+      default: return 0;
+    }
   };
 
   if (loading || !profile) {
@@ -204,7 +207,7 @@ const Play = () => {
                   key={powerUp.id}
                   variant="outline"
                   size="sm"
-                  onClick={() => usePowerUp(powerUp.id)}
+                  onClick={() => handleUsePowerUp(powerUp.id)}
                   disabled={count <= 0 || gameStatus !== 'playing'}
                   className="relative gap-1 text-xs"
                   title={powerUp.nameCn}
