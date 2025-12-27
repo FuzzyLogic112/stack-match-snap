@@ -6,7 +6,7 @@ import { DIFFICULTY_TIERS, getLevelsForTier, DifficultyTier } from '@/config/lev
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Lock, Unlock, Star, Coins, LogOut, Trophy, ShoppingBag, Calendar, Volume2, VolumeX } from 'lucide-react';
+import { Lock, Unlock, Star, Coins, LogOut, Trophy, ShoppingBag, Calendar, Volume2, VolumeX, Users, Award } from 'lucide-react';
 
 const LevelSelect = () => {
   const navigate = useNavigate();
@@ -116,6 +116,38 @@ const LevelSelect = () => {
               <div>
                 <p className="font-bold text-foreground">道具商店</p>
                 <p className="text-xs text-muted-foreground">购买强化道具</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card 
+            className="cursor-pointer transition-all duration-200 hover:border-primary hover:shadow-lg"
+            onClick={() => {
+              playButton();
+              navigate('/friends');
+            }}
+          >
+            <CardContent className="flex items-center gap-3 p-4">
+              <Users className="w-8 h-8 text-primary" />
+              <div>
+                <p className="font-bold text-foreground">好友</p>
+                <p className="text-xs text-muted-foreground">好友排行榜</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card 
+            className="cursor-pointer transition-all duration-200 hover:border-primary hover:shadow-lg"
+            onClick={() => {
+              playButton();
+              navigate('/achievements');
+            }}
+          >
+            <CardContent className="flex items-center gap-3 p-4">
+              <Award className="w-8 h-8 text-primary" />
+              <div>
+                <p className="font-bold text-foreground">成就</p>
+                <p className="text-xs text-muted-foreground">解锁成就奖励</p>
               </div>
             </CardContent>
           </Card>
