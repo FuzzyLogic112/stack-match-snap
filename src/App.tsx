@@ -9,6 +9,8 @@ import Play from "./pages/Play";
 import Auth from "./pages/Auth";
 import Shop from "./pages/Shop";
 import DailyChallenge from "./pages/DailyChallenge";
+import Friends from "./pages/Friends";
+import Achievements from "./pages/Achievements";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -25,6 +27,8 @@ const App = () => (
           <Route path="/auth" element={<Auth />} />
           <Route path="/shop" element={<Shop />} />
           <Route path="/daily" element={<DailyChallenge />} />
+          <Route path="/friends" element={<Friends />} />
+          <Route path="/achievements" element={<Achievements />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
