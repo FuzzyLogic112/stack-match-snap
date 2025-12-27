@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      achievements: {
+        Row: {
+          category: string
+          coin_reward: number
+          created_at: string
+          description_cn: string
+          icon: string
+          id: string
+          name_cn: string
+          requirement_type: string
+          requirement_value: number
+        }
+        Insert: {
+          category: string
+          coin_reward?: number
+          created_at?: string
+          description_cn: string
+          icon: string
+          id: string
+          name_cn: string
+          requirement_type: string
+          requirement_value: number
+        }
+        Update: {
+          category?: string
+          coin_reward?: number
+          created_at?: string
+          description_cn?: string
+          icon?: string
+          id?: string
+          name_cn?: string
+          requirement_type?: string
+          requirement_value?: number
+        }
+        Relationships: []
+      }
       daily_challenges: {
         Row: {
           challenge_date: string
@@ -38,24 +74,72 @@ export type Database = {
         }
         Relationships: []
       }
+      friendships: {
+        Row: {
+          addressee_id: string
+          created_at: string
+          id: string
+          requester_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          addressee_id: string
+          created_at?: string
+          id?: string
+          requester_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          addressee_id?: string
+          created_at?: string
+          id?: string
+          requester_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       leaderboard: {
         Row: {
           created_at: string
           id: string
           player_name: string
           score: number
+          user_id: string | null
         }
         Insert: {
           created_at?: string
           id?: string
           player_name: string
           score?: number
+          user_id?: string | null
         }
         Update: {
           created_at?: string
           id?: string
           player_name?: string
           score?: number
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      level_rewards: {
+        Row: {
+          coin_reward: number
+          level_num: number
+          tier: string
+        }
+        Insert: {
+          coin_reward?: number
+          level_num: number
+          tier?: string
+        }
+        Update: {
+          coin_reward?: number
+          level_num?: number
+          tier?: string
         }
         Relationships: []
       }
@@ -68,6 +152,7 @@ export type Database = {
           max_level: number
           remove_three_count: number
           shuffle_count: number
+          total_powerups_used: number
           undo_count: number
           updated_at: string
           username: string
@@ -80,6 +165,7 @@ export type Database = {
           max_level?: number
           remove_three_count?: number
           shuffle_count?: number
+          total_powerups_used?: number
           undo_count?: number
           updated_at?: string
           username: string
@@ -92,29 +178,80 @@ export type Database = {
           max_level?: number
           remove_three_count?: number
           shuffle_count?: number
+          total_powerups_used?: number
           undo_count?: number
           updated_at?: string
           username?: string
         }
         Relationships: []
       }
+      user_achievements: {
+        Row: {
+          achievement_id: string
+          id: string
+          unlocked_at: string
+          user_id: string
+        }
+        Insert: {
+          achievement_id: string
+          id?: string
+          unlocked_at?: string
+          user_id: string
+        }
+        Update: {
+          achievement_id?: string
+          id?: string
+          unlocked_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_achievements_achievement_id_fkey"
+            columns: ["achievement_id"]
+            isOneToOne: false
+            referencedRelation: "achievements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      check_achievements: { Args: never; Returns: Json }
       check_daily_challenge_completed: { Args: never; Returns: boolean }
-      complete_daily_challenge: {
-        Args: { p_coin_reward: number }
-        Returns: Json
-      }
-      complete_level: {
-        Args: { p_coin_reward: number; p_level_num: number }
-        Returns: Json
+      complete_daily_challenge:
+        | { Args: never; Returns: Json }
+        | { Args: { p_coin_reward: number }; Returns: Json }
+      complete_level:
+        | { Args: { p_level_num: number }; Returns: Json }
+        | {
+            Args: { p_coin_reward: number; p_level_num: number }
+            Returns: Json
+          }
+      get_friend_leaderboard: {
+        Args: never
+        Returns: {
+          coins: number
+          max_level: number
+          rank: number
+          user_id: string
+          username: string
+        }[]
       }
       purchase_powerup: {
         Args: { p_powerup_id: string; p_price: number }
         Returns: Json
+      }
+      search_users: {
+        Args: { p_query: string }
+        Returns: {
+          is_friend: boolean
+          request_pending: boolean
+          user_id: string
+          username: string
+        }[]
       }
       use_powerup: { Args: { p_powerup_id: string }; Returns: Json }
     }
