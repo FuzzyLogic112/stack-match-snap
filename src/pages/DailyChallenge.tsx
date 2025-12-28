@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGameLogic } from '@/hooks/useGameLogic';
 import { useAuth } from '@/hooks/useAuth';
@@ -6,9 +6,10 @@ import { useSoundEffects } from '@/hooks/useSoundEffects';
 import { POWER_UPS } from '@/config/powerups';
 import { GameBoard } from '@/components/game/GameBoard';
 import { Tray } from '@/components/game/Tray';
+import { ScreenShake, ScreenShakeRef } from '@/components/effects/ScreenShake';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { ArrowLeft, RefreshCw, Star, Coins, Calendar } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Star, Coins, Calendar, Flame } from 'lucide-react';
 
 const DailyChallenge = () => {
   const navigate = useNavigate();
@@ -23,18 +24,21 @@ const DailyChallenge = () => {
   const [hasAwarded, setHasAwarded] = useState(false);
   const [hasPlayedToday, setHasPlayedToday] = useState(false);
   const [checkingCompletion, setCheckingCompletion] = useState(true);
+  const [currentStreak, setCurrentStreak] = useState(0);
+  const shakeRef = useRef<ScreenShakeRef>(null);
 
   // Check if already completed today via server-side
   useEffect(() => {
     const checkCompletion = async () => {
-      if (user) {
+      if (user && profile) {
         const completed = await checkDailyChallengeCompleted();
         setHasPlayedToday(completed);
+        setCurrentStreak(profile.daily_streak || 0);
       }
       setCheckingCompletion(false);
     };
     checkCompletion();
-  }, [user, checkDailyChallengeCompleted]);
+  }, [user, profile, checkDailyChallengeCompleted]);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -43,7 +47,10 @@ const DailyChallenge = () => {
   }, [user, loading, navigate]);
 
   useEffect(() => {
-    setOnMatch(() => playMatch);
+    setOnMatch(() => {
+      playMatch();
+      shakeRef.current?.shake();
+    });
   }, [setOnMatch, playMatch]);
 
   // Handle win condition
@@ -55,18 +62,20 @@ const DailyChallenge = () => {
       const reward = currentLevel.coinReward;
       
       // Use server-side RPC to complete daily challenge
-      completeDailyChallenge(reward).then(({ success, error }) => {
+      completeDailyChallenge(reward).then(({ success, error, data }) => {
         if (error || !success) {
           toast.error('保存进度失败');
         } else {
-          toast.success(`+${reward} 金币！每日挑战完成！`);
+          const newStreak = data?.streak || currentStreak + 1;
+          setCurrentStreak(newStreak);
+          toast.success(`+${reward} 金币！连续 ${newStreak} 天！`);
           setHasPlayedToday(true);
         }
       });
     } else if (gameStatus === 'lost') {
       playLose();
     }
-  }, [gameStatus, profile, hasAwarded, hasPlayedToday, currentLevel, completeDailyChallenge, playWin, playLose]);
+  }, [gameStatus, profile, hasAwarded, hasPlayedToday, currentLevel, completeDailyChallenge, playWin, playLose, currentStreak]);
 
   const handleTileSelect = (tileId: string) => {
     playSelect();
@@ -191,6 +200,11 @@ const DailyChallenge = () => {
               {dateStr}
             </div>
             
+            <div className="flex items-center gap-2 bg-orange-500/20 rounded-xl px-4 py-2">
+              <Flame className="w-5 h-5 text-orange-500" />
+              <span className="font-bold text-foreground">{currentStreak}天</span>
+            </div>
+            
             <div className="flex items-center gap-2 bg-secondary/50 rounded-xl px-4 py-2">
               <Star className="w-5 h-5 text-primary fill-primary" />
               <span className="font-bold text-foreground">{score}</span>
@@ -226,10 +240,12 @@ const DailyChallenge = () => {
           )}
         </div>
         
-        <div className="space-y-6">
-          <GameBoard tiles={tiles} onSelectTile={handleTileSelect} hintedTiles={hintedTiles} />
-          <Tray tiles={tray} />
-        </div>
+        <ScreenShake ref={shakeRef}>
+          <div className="space-y-6">
+            <GameBoard tiles={tiles} onSelectTile={handleTileSelect} hintedTiles={hintedTiles} />
+            <Tray tiles={tray} />
+          </div>
+        </ScreenShake>
 
         <p className="text-center text-sm text-muted-foreground mt-4">
           奖励: +{currentLevel.coinReward} 金币

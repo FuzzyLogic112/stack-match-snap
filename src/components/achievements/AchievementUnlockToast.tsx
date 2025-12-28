@@ -1,6 +1,8 @@
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Trophy, X, Coins } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Confetti } from '@/components/effects/Confetti';
 
 interface Achievement {
   id: string;
@@ -35,12 +37,22 @@ const getIconEmoji = (icon: string) => {
 };
 
 export const AchievementUnlockToast = ({ achievements, onClose }: AchievementUnlockToastProps) => {
+  const [showConfetti, setShowConfetti] = useState(false);
+
+  useEffect(() => {
+    if (achievements.length > 0) {
+      setShowConfetti(true);
+    }
+  }, [achievements]);
+
   if (achievements.length === 0) return null;
 
   const totalReward = achievements.reduce((sum, a) => sum + a.coin_reward, 0);
 
   return (
-    <AnimatePresence>
+    <>
+      <Confetti isActive={showConfetti} duration={4000} />
+      <AnimatePresence>
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -102,5 +114,6 @@ export const AchievementUnlockToast = ({ achievements, onClose }: AchievementUnl
         </motion.div>
       </motion.div>
     </AnimatePresence>
+    </>
   );
 };
