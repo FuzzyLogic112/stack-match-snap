@@ -15,7 +15,7 @@ const Index = () => {
   const navigate = useNavigate();
   const { user, profile, loading, signOut } = useAuth();
   const { tiles, tray, gameStatus, score, selectTile, restartGame } = useGameLogic();
-  const { leaderboard, isLoading, submitScore } = useLeaderboard();
+  const { leaderboard, isLoading, timeFilter, changeTimeFilter, submitScore } = useLeaderboard();
   const [showScoreDialog, setShowScoreDialog] = useState(false);
   const [pendingScore, setPendingScore] = useState(0);
 
@@ -97,7 +97,12 @@ const Index = () => {
           Tap unblocked tiles to move them to the tray. Match 3 to clear!
         </p>
 
-        <Leaderboard entries={leaderboard} isLoading={isLoading} />
+        <Leaderboard 
+          entries={leaderboard} 
+          isLoading={isLoading} 
+          timeFilter={timeFilter}
+          onTimeFilterChange={changeTimeFilter}
+        />
       </div>
 
       <GameOverlay 

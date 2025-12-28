@@ -38,6 +38,28 @@ const generateTiles = (config: LevelConfig): TileData[] => {
   
   let iconIndex = 0;
   
+  // Calculate board dimensions for centering (max-w-md = 448px, h-96 = 384px)
+  const boardWidth = 380;
+  const boardHeight = 350;
+  
+  // Find max grid dimensions across all layers
+  let maxCols = 0;
+  let maxRows = 0;
+  for (let layer = 0; layer < layers; layer++) {
+    const count = tilesPerLayer[layer] || 6;
+    const gridSize = Math.ceil(Math.sqrt(count));
+    maxCols = Math.max(maxCols, gridSize);
+    maxRows = Math.max(maxRows, Math.ceil(count / gridSize));
+  }
+  
+  // Calculate tile grid size and centering offsets
+  const tileSize = 56;
+  const gap = 4;
+  const totalGridWidth = maxCols * tileSize + (maxCols - 1) * gap;
+  const totalGridHeight = maxRows * tileSize + (maxRows - 1) * gap;
+  const baseOffsetX = (boardWidth - totalGridWidth) / 2;
+  const baseOffsetY = (boardHeight - totalGridHeight) / 2;
+  
   for (let layer = 0; layer < layers; layer++) {
     const count = tilesPerLayer[layer] || 6;
     const gridSize = Math.ceil(Math.sqrt(count));
@@ -54,8 +76,8 @@ const generateTiles = (config: LevelConfig): TileData[] => {
         id: generateId(),
         icon: tileIcons[iconIndex % tileIcons.length],
         layer,
-        x: col * 60 + offsetX + (layer * layerSpacing) + 20,
-        y: row * 60 + offsetY + (layer * layerSpacing) + 20,
+        x: baseOffsetX + col * (tileSize + gap) + offsetX + (layer * layerSpacing),
+        y: baseOffsetY + row * (tileSize + gap) + offsetY + (layer * layerSpacing),
         isBlocked: false,
         isVisible: true,
       });

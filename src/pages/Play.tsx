@@ -2,11 +2,13 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useGameLogic } from '@/hooks/useGameLogic';
 import { useAuth } from '@/hooks/useAuth';
+import { useAchievements } from '@/hooks/useAchievements';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
 import { POWER_UPS } from '@/config/powerups';
 import { getTierForLevel, DIFFICULTY_TIERS } from '@/config/levels';
 import { GameBoard } from '@/components/game/GameBoard';
 import { Tray } from '@/components/game/Tray';
+import { AchievementUnlockToast } from '@/components/achievements/AchievementUnlockToast';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { ArrowLeft, RefreshCw, Star, Coins } from 'lucide-react';
@@ -17,6 +19,7 @@ const Play = () => {
   const levelNumber = parseInt(levelId || '1', 10);
   
   const { user, profile, loading, completeLevel, usePowerup, refreshProfile } = useAuth();
+  const { checkAchievements, newlyUnlocked, clearNewlyUnlocked, allAchievements } = useAchievements();
   const { playSelect, playMatch, playWin, playLose, playPowerUp, playButton, playError } = useSoundEffects();
   
   const { 
@@ -51,17 +54,19 @@ const Play = () => {
       playWin();
       
       // Use server-side RPC to complete level
-      completeLevel(levelNumber, currentLevel.coinReward).then(({ success, error }) => {
+      completeLevel(levelNumber, currentLevel.coinReward).then(async ({ success, error }) => {
         if (error || !success) {
           toast.error('保存进度失败');
         } else {
           toast.success(`+${currentLevel.coinReward} 金币！关卡完成！`);
+          // Auto-check achievements after level completion
+          await checkAchievements();
         }
       });
     } else if (gameStatus === 'lost') {
       playLose();
     }
-  }, [gameStatus, profile, hasAwarded, currentLevel, levelNumber, completeLevel, playWin, playLose]);
+  }, [gameStatus, profile, hasAwarded, currentLevel, levelNumber, completeLevel, playWin, playLose, checkAchievements]);
 
   const handleTileSelect = (tileId: string) => {
     playSelect();
@@ -274,6 +279,12 @@ const Play = () => {
           </div>
         </div>
       )}
+
+      {/* Achievement unlock toasts */}
+      <AchievementUnlockToast
+        achievements={allAchievements.filter(a => newlyUnlocked.includes(a.id))}
+        onClose={clearNewlyUnlocked}
+      />
     </div>
   );
 };
