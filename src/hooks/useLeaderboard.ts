@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface LeaderboardEntry {
@@ -8,25 +8,43 @@ interface LeaderboardEntry {
   created_at: string;
 }
 
+export type TimeFilter = 'all' | 'week' | 'month';
+
 export const useLeaderboard = () => {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>('all');
 
-  const fetchLeaderboard = async () => {
-    const { data, error } = await supabase
+  const fetchLeaderboard = useCallback(async (filter: TimeFilter = timeFilter) => {
+    setIsLoading(true);
+    
+    let query = supabase
       .from('leaderboard')
       .select('*')
       .order('score', { ascending: false })
       .limit(10);
 
+    // Apply time filter
+    if (filter === 'week') {
+      const weekAgo = new Date();
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      query = query.gte('created_at', weekAgo.toISOString());
+    } else if (filter === 'month') {
+      const monthAgo = new Date();
+      monthAgo.setMonth(monthAgo.getMonth() - 1);
+      query = query.gte('created_at', monthAgo.toISOString());
+    }
+
+    const { data, error } = await query;
+
     if (!error && data) {
       setLeaderboard(data);
     }
     setIsLoading(false);
-  };
+  }, [timeFilter]);
 
   useEffect(() => {
-    fetchLeaderboard();
+    fetchLeaderboard(timeFilter);
 
     // Subscribe to realtime updates
     const channel = supabase
@@ -39,7 +57,7 @@ export const useLeaderboard = () => {
           table: 'leaderboard'
         },
         () => {
-          fetchLeaderboard();
+          fetchLeaderboard(timeFilter);
         }
       )
       .subscribe();
@@ -47,7 +65,11 @@ export const useLeaderboard = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [timeFilter, fetchLeaderboard]);
+
+  const changeTimeFilter = (filter: TimeFilter) => {
+    setTimeFilter(filter);
+  };
 
   const submitScore = async (playerName: string, score: number) => {
     // Client-side validation (defense in depth - database also has constraints)
@@ -70,7 +92,7 @@ export const useLeaderboard = () => {
       .insert([{ player_name: trimmedName, score }]);
 
     if (!error) {
-      await fetchLeaderboard();
+      await fetchLeaderboard(timeFilter);
     }
     return { error };
   };
@@ -78,7 +100,9 @@ export const useLeaderboard = () => {
   return {
     leaderboard,
     isLoading,
+    timeFilter,
+    changeTimeFilter,
     submitScore,
-    refreshLeaderboard: fetchLeaderboard
+    refreshLeaderboard: () => fetchLeaderboard(timeFilter)
   };
 };

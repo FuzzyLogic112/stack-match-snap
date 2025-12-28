@@ -1,5 +1,7 @@
 import { motion } from 'framer-motion';
-import { Trophy, Medal, Award } from 'lucide-react';
+import { Trophy, Medal, Award, Calendar, CalendarDays, Clock } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { TimeFilter } from '@/hooks/useLeaderboard';
 
 interface LeaderboardEntry {
   id: string;
@@ -11,6 +13,8 @@ interface LeaderboardEntry {
 interface LeaderboardProps {
   entries: LeaderboardEntry[];
   isLoading: boolean;
+  timeFilter?: TimeFilter;
+  onTimeFilterChange?: (filter: TimeFilter) => void;
 }
 
 const getRankIcon = (index: number) => {
@@ -26,13 +30,38 @@ const getRankIcon = (index: number) => {
   }
 };
 
-export const Leaderboard = ({ entries, isLoading }: LeaderboardProps) => {
+const timeFilterLabels: Record<TimeFilter, { label: string; icon: React.ReactNode }> = {
+  all: { label: '全部', icon: <Clock className="w-4 h-4" /> },
+  week: { label: '本周', icon: <Calendar className="w-4 h-4" /> },
+  month: { label: '本月', icon: <CalendarDays className="w-4 h-4" /> },
+};
+
+export const Leaderboard = ({ entries, isLoading, timeFilter = 'all', onTimeFilterChange }: LeaderboardProps) => {
   return (
     <div className="w-full max-w-md mx-auto mt-6">
-      <h2 className="text-lg font-bold text-foreground mb-3 flex items-center gap-2">
-        <Trophy className="w-5 h-5 text-primary" />
-        Leaderboard
-      </h2>
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
+          <Trophy className="w-5 h-5 text-primary" />
+          排行榜
+        </h2>
+        
+        {onTimeFilterChange && (
+          <div className="flex gap-1">
+            {(Object.keys(timeFilterLabels) as TimeFilter[]).map((filter) => (
+              <Button
+                key={filter}
+                variant={timeFilter === filter ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => onTimeFilterChange(filter)}
+                className="gap-1 text-xs px-2 h-7"
+              >
+                {timeFilterLabels[filter].icon}
+                {timeFilterLabels[filter].label}
+              </Button>
+            ))}
+          </div>
+        )}
+      </div>
 
       <div className="bg-card rounded-2xl p-4 shadow-lg border border-border">
         {isLoading ? (
@@ -43,7 +72,7 @@ export const Leaderboard = ({ entries, isLoading }: LeaderboardProps) => {
           </div>
         ) : entries.length === 0 ? (
           <p className="text-center text-muted-foreground py-4">
-            No scores yet. Be the first!
+            暂无记录
           </p>
         ) : (
           <div className="space-y-2">
