@@ -11,6 +11,8 @@ export interface Profile {
   undo_count: number;
   remove_three_count: number;
   hint_count: number;
+  daily_streak: number;
+  last_daily_date: string | null;
 }
 
 export const useAuth = () => {
@@ -53,12 +55,16 @@ export const useAuth = () => {
   const fetchProfile = async (userId: string) => {
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, username, coins, max_level, shuffle_count, undo_count, remove_three_count, hint_count')
+      .select('id, username, coins, max_level, shuffle_count, undo_count, remove_three_count, hint_count, daily_streak, last_daily_date')
       .eq('id', userId)
       .maybeSingle();
 
     if (!error && data) {
-      setProfile(data as Profile);
+      setProfile({
+        ...data,
+        daily_streak: data.daily_streak ?? 0,
+        last_daily_date: data.last_daily_date ?? null
+      } as Profile);
     }
   };
 
@@ -102,6 +108,7 @@ export const useAuth = () => {
     success: boolean;
     error?: string;
     new_max_level?: number;
+    streak?: number;
   }
 
   // Server-side RPC: Purchase powerup
@@ -174,12 +181,13 @@ export const useAuth = () => {
     
     if (!error && result?.success) {
       refreshProfile();
-      return { success: true, error: null };
+      return { success: true, error: null, data: { streak: result.streak } };
     }
     
     return { 
       success: false, 
-      error: error || new Error(result?.error || 'Daily challenge completion failed') 
+      error: error || new Error(result?.error || 'Daily challenge completion failed'),
+      data: null
     };
   };
 

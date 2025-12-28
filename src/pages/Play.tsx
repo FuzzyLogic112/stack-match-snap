@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useGameLogic } from '@/hooks/useGameLogic';
 import { useAuth } from '@/hooks/useAuth';
@@ -9,6 +9,7 @@ import { getTierForLevel, DIFFICULTY_TIERS } from '@/config/levels';
 import { GameBoard } from '@/components/game/GameBoard';
 import { Tray } from '@/components/game/Tray';
 import { AchievementUnlockToast } from '@/components/achievements/AchievementUnlockToast';
+import { ScreenShake, ScreenShakeRef } from '@/components/effects/ScreenShake';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { ArrowLeft, RefreshCw, Star, Coins } from 'lucide-react';
@@ -26,8 +27,8 @@ const Play = () => {
     tiles, tray, gameStatus, score, currentLevel, hintedTiles,
     selectTile, restartGame, shuffleTiles, undoLastMove, removeThreeFromTray, showHint, setOnMatch
   } = useGameLogic(levelNumber);
-  
   const [hasAwarded, setHasAwarded] = useState(false);
+  const shakeRef = useRef<ScreenShakeRef>(null);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -44,7 +45,10 @@ const Play = () => {
   }, [loading, profile, levelNumber, navigate]);
 
   useEffect(() => {
-    setOnMatch(() => playMatch);
+    setOnMatch(() => {
+      playMatch();
+      shakeRef.current?.shake();
+    });
   }, [setOnMatch, playMatch]);
 
   // Handle win condition - award coins and unlock next level via server-side RPC
@@ -227,10 +231,12 @@ const Play = () => {
           </div>
         </div>
         
-        <div className="space-y-6">
-          <GameBoard tiles={tiles} onSelectTile={handleTileSelect} hintedTiles={hintedTiles} />
-          <Tray tiles={tray} />
-        </div>
+        <ScreenShake ref={shakeRef}>
+          <div className="space-y-6">
+            <GameBoard tiles={tiles} onSelectTile={handleTileSelect} hintedTiles={hintedTiles} />
+            <Tray tiles={tray} />
+          </div>
+        </ScreenShake>
 
         <p className="text-center text-sm text-muted-foreground mt-4">
           {currentLevel.description}

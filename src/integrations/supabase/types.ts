@@ -147,8 +147,10 @@ export type Database = {
         Row: {
           coins: number
           created_at: string
+          daily_streak: number | null
           hint_count: number
           id: string
+          last_daily_date: string | null
           max_level: number
           remove_three_count: number
           shuffle_count: number
@@ -160,8 +162,10 @@ export type Database = {
         Insert: {
           coins?: number
           created_at?: string
+          daily_streak?: number | null
           hint_count?: number
           id: string
+          last_daily_date?: string | null
           max_level?: number
           remove_three_count?: number
           shuffle_count?: number
@@ -173,8 +177,10 @@ export type Database = {
         Update: {
           coins?: number
           created_at?: string
+          daily_streak?: number | null
           hint_count?: number
           id?: string
+          last_daily_date?: string | null
           max_level?: number
           remove_three_count?: number
           shuffle_count?: number
