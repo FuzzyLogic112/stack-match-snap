@@ -74,12 +74,14 @@ const Play = () => {
       setHasAwarded(true);
       playWin();
       
-      // Use server-side RPC to complete level
-      completeLevel(levelNumber, currentLevel.coinReward).then(async ({ success, error }) => {
+      // Use server-side RPC to complete level (server determines coin reward)
+      completeLevel(levelNumber).then(async ({ success, coinReward, error }) => {
         if (error || !success) {
           toast.error('保存进度失败');
         } else {
-          toast.success(`+${currentLevel.coinReward} 金币！关卡完成！`);
+          // Use server-returned coin reward, fallback to config for display
+          const displayReward = coinReward ?? currentLevel.coinReward;
+          toast.success(`+${displayReward} 金币！关卡完成！`);
           // Auto-check achievements after level completion
           await checkAchievements();
         }
