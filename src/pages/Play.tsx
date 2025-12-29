@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useGameLogic } from '@/hooks/useGameLogic';
 import { useAuth } from '@/hooks/useAuth';
@@ -10,6 +10,8 @@ import { GameBoard } from '@/components/game/GameBoard';
 import { Tray } from '@/components/game/Tray';
 import { AchievementUnlockToast } from '@/components/achievements/AchievementUnlockToast';
 import { ScreenShake, ScreenShakeRef } from '@/components/effects/ScreenShake';
+import { ParticleEffect } from '@/components/effects/ParticleEffect';
+import { MusicToggle } from '@/components/game/MusicToggle';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { ArrowLeft, RefreshCw, Star, Coins } from 'lucide-react';
@@ -28,7 +30,10 @@ const Play = () => {
     selectTile, restartGame, shuffleTiles, undoLastMove, removeThreeFromTray, showHint, setOnMatch
   } = useGameLogic(levelNumber);
   const [hasAwarded, setHasAwarded] = useState(false);
+  const [particleTrigger, setParticleTrigger] = useState(0);
+  const [particlePos, setParticlePos] = useState({ x: 0, y: 0 });
   const shakeRef = useRef<ScreenShakeRef>(null);
+  const boardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -44,12 +49,24 @@ const Play = () => {
     }
   }, [loading, profile, levelNumber, navigate]);
 
+  const handleMatch = useCallback(() => {
+    playMatch();
+    shakeRef.current?.shake();
+    
+    // Trigger particles at board center
+    if (boardRef.current) {
+      const rect = boardRef.current.getBoundingClientRect();
+      setParticlePos({
+        x: rect.left + rect.width / 2,
+        y: rect.top + rect.height / 2,
+      });
+      setParticleTrigger(prev => prev + 1);
+    }
+  }, [playMatch]);
+
   useEffect(() => {
-    setOnMatch(() => {
-      playMatch();
-      shakeRef.current?.shake();
-    });
-  }, [setOnMatch, playMatch]);
+    setOnMatch(handleMatch);
+  }, [setOnMatch, handleMatch]);
 
   // Handle win condition - award coins and unlock next level via server-side RPC
   useEffect(() => {
@@ -172,15 +189,18 @@ const Play = () => {
         {/* Header */}
         <div className="w-full max-w-md mx-auto mb-4 space-y-3">
           <div className="flex items-center justify-between">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleBackToLevels}
-              className="text-muted-foreground hover:text-foreground"
-            >
-              <ArrowLeft className="w-4 h-4 mr-1" />
-              返回
-            </Button>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleBackToLevels}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <ArrowLeft className="w-4 h-4 mr-1" />
+                返回
+              </Button>
+              <MusicToggle />
+            </div>
             <div className="text-center">
               <h1 className="text-xl font-bold text-foreground">{currentLevel.name}</h1>
               <span className="text-xs text-muted-foreground">{tierInfo?.nameCn}</span>
@@ -232,7 +252,7 @@ const Play = () => {
         </div>
         
         <ScreenShake ref={shakeRef}>
-          <div className="space-y-6">
+          <div className="space-y-6" ref={boardRef}>
             <GameBoard tiles={tiles} onSelectTile={handleTileSelect} hintedTiles={hintedTiles} />
             <Tray tiles={tray} />
           </div>
@@ -241,6 +261,8 @@ const Play = () => {
         <p className="text-center text-sm text-muted-foreground mt-4">
           {currentLevel.description}
         </p>
+        
+        <ParticleEffect trigger={particleTrigger} x={particlePos.x} y={particlePos.y} />
       </div>
 
       {/* Game Over Overlay */}

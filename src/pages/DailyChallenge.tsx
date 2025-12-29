@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGameLogic } from '@/hooks/useGameLogic';
 import { useAuth } from '@/hooks/useAuth';
@@ -7,9 +7,11 @@ import { POWER_UPS } from '@/config/powerups';
 import { GameBoard } from '@/components/game/GameBoard';
 import { Tray } from '@/components/game/Tray';
 import { ScreenShake, ScreenShakeRef } from '@/components/effects/ScreenShake';
+import { ParticleEffect } from '@/components/effects/ParticleEffect';
+import { MusicToggle } from '@/components/game/MusicToggle';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { ArrowLeft, RefreshCw, Star, Coins, Calendar, Flame } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Star, Coins, Calendar, Flame, Gift } from 'lucide-react';
 
 const DailyChallenge = () => {
   const navigate = useNavigate();
@@ -25,7 +27,13 @@ const DailyChallenge = () => {
   const [hasPlayedToday, setHasPlayedToday] = useState(false);
   const [checkingCompletion, setCheckingCompletion] = useState(true);
   const [currentStreak, setCurrentStreak] = useState(0);
+  const [particleTrigger, setParticleTrigger] = useState(0);
+  const [particlePos, setParticlePos] = useState({ x: 0, y: 0 });
   const shakeRef = useRef<ScreenShakeRef>(null);
+  const boardRef = useRef<HTMLDivElement>(null);
+  
+  // Calculate streak bonus: base + (streak * 10), max 100 bonus
+  const getStreakBonus = (streak: number) => Math.min(streak * 10, 100);
 
   // Check if already completed today via server-side
   useEffect(() => {
@@ -46,12 +54,24 @@ const DailyChallenge = () => {
     }
   }, [user, loading, navigate]);
 
+  const handleMatch = useCallback(() => {
+    playMatch();
+    shakeRef.current?.shake();
+    
+    // Trigger particles at board center
+    if (boardRef.current) {
+      const rect = boardRef.current.getBoundingClientRect();
+      setParticlePos({
+        x: rect.left + rect.width / 2,
+        y: rect.top + rect.height / 2,
+      });
+      setParticleTrigger(prev => prev + 1);
+    }
+  }, [playMatch]);
+
   useEffect(() => {
-    setOnMatch(() => {
-      playMatch();
-      shakeRef.current?.shake();
-    });
-  }, [setOnMatch, playMatch]);
+    setOnMatch(handleMatch);
+  }, [setOnMatch, handleMatch]);
 
   // Handle win condition
   useEffect(() => {
@@ -167,15 +187,18 @@ const DailyChallenge = () => {
         {/* Header */}
         <div className="w-full max-w-md mx-auto mb-4 space-y-3">
           <div className="flex items-center justify-between">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleBackToLevels}
-              className="text-muted-foreground hover:text-foreground"
-            >
-              <ArrowLeft className="w-4 h-4 mr-1" />
-              返回
-            </Button>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleBackToLevels}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <ArrowLeft className="w-4 h-4 mr-1" />
+                返回
+              </Button>
+              <MusicToggle />
+            </div>
             <div className="flex items-center gap-2">
               <Calendar className="w-5 h-5 text-accent" />
               <h1 className="text-xl font-bold text-foreground">每日挑战</h1>
@@ -233,6 +256,16 @@ const DailyChallenge = () => {
             })}
           </div>
 
+          {/* Streak Bonus Info */}
+          {currentStreak > 0 && (
+            <div className="flex items-center justify-center gap-2 p-2 bg-gradient-to-r from-orange-500/20 to-primary/20 rounded-xl">
+              <Gift className="w-4 h-4 text-primary" />
+              <span className="text-sm text-foreground">
+                连续签到奖励: +{getStreakBonus(currentStreak)} 金币
+              </span>
+            </div>
+          )}
+
           {hasPlayedToday && (
             <div className="text-center p-2 bg-primary/10 rounded-xl">
               <span className="text-sm text-primary font-medium">✅ 今日挑战已完成</span>
@@ -241,15 +274,17 @@ const DailyChallenge = () => {
         </div>
         
         <ScreenShake ref={shakeRef}>
-          <div className="space-y-6">
+          <div className="space-y-6" ref={boardRef}>
             <GameBoard tiles={tiles} onSelectTile={handleTileSelect} hintedTiles={hintedTiles} />
             <Tray tiles={tray} />
           </div>
         </ScreenShake>
 
         <p className="text-center text-sm text-muted-foreground mt-4">
-          奖励: +{currentLevel.coinReward} 金币
+          奖励: +{currentLevel.coinReward} 金币 {currentStreak > 0 && `+ ${getStreakBonus(currentStreak)} 连签奖励`}
         </p>
+        
+        <ParticleEffect trigger={particleTrigger} x={particlePos.x} y={particlePos.y} />
       </div>
 
       {/* Game Over Overlay */}
