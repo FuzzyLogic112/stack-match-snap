@@ -108,6 +108,7 @@ export const useAuth = () => {
     success: boolean;
     error?: string;
     new_max_level?: number;
+    coin_reward?: number;
     streak?: number;
   }
 
@@ -150,23 +151,28 @@ export const useAuth = () => {
     };
   };
 
-  // Server-side RPC: Complete level
-  const completeLevel = async (levelNum: number, coinReward: number) => {
+  // Server-side RPC: Complete level (server determines coin reward)
+  const completeLevel = async (levelNum: number) => {
     const { data, error } = await supabase.rpc('complete_level', {
-      p_level_num: levelNum,
-      p_coin_reward: coinReward
+      p_level_num: levelNum
     });
     
     const result = data as unknown as RpcResponse | null;
     
     if (!error && result?.success) {
       refreshProfile();
-      return { success: true, newMaxLevel: result.new_max_level ?? null, error: null };
+      return { 
+        success: true, 
+        newMaxLevel: result.new_max_level ?? null, 
+        coinReward: result.coin_reward ?? null,
+        error: null 
+      };
     }
     
     return { 
       success: false, 
       newMaxLevel: null,
+      coinReward: null,
       error: error || new Error(result?.error || 'Complete level failed') 
     };
   };
