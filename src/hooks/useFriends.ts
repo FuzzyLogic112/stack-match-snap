@@ -32,11 +32,12 @@ export const useFriends = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
 
-  const fetchFriendLeaderboard = useCallback(async () => {
+  const fetchGlobalLeaderboard = useCallback(async () => {
     if (!user) return;
     
     setIsLoading(true);
-    const { data, error } = await supabase.rpc('get_friend_leaderboard');
+    // Use global leaderboard - all registered users are included
+    const { data, error } = await supabase.rpc('get_global_leaderboard');
     
     if (!error && data) {
       setFriendLeaderboard(data);
@@ -72,10 +73,10 @@ export const useFriends = () => {
 
   useEffect(() => {
     if (user) {
-      fetchFriendLeaderboard();
+      fetchGlobalLeaderboard();
       fetchPendingRequests();
     }
-  }, [user, fetchFriendLeaderboard, fetchPendingRequests]);
+  }, [user, fetchGlobalLeaderboard, fetchPendingRequests]);
 
   const searchUsers = async (query: string) => {
     if (!user || query.trim().length < 2) {
@@ -114,7 +115,7 @@ export const useFriends = () => {
 
     if (!error) {
       await fetchPendingRequests();
-      await fetchFriendLeaderboard();
+      await fetchGlobalLeaderboard();
     }
     return { error };
   };
@@ -138,7 +139,7 @@ export const useFriends = () => {
       .eq('id', friendshipId);
 
     if (!error) {
-      await fetchFriendLeaderboard();
+      await fetchGlobalLeaderboard();
     }
     return { error };
   };
@@ -154,7 +155,7 @@ export const useFriends = () => {
     acceptFriendRequest,
     rejectFriendRequest,
     removeFriend,
-    refreshLeaderboard: fetchFriendLeaderboard,
+    refreshLeaderboard: fetchGlobalLeaderboard,
     refreshRequests: fetchPendingRequests
   };
 };

@@ -34,8 +34,8 @@ export const FriendLeaderboard = ({ entries, isLoading, currentUserId }: FriendL
     return (
       <div className="bg-card rounded-2xl p-4 space-y-3">
         <div className="flex items-center gap-2 mb-4">
-          <Users className="w-5 h-5 text-primary" />
-          <h3 className="font-bold text-foreground">好友排行榜</h3>
+          <Trophy className="w-5 h-5 text-primary" />
+          <h3 className="font-bold text-foreground">玩家排行榜</h3>
         </div>
         {[...Array(5)].map((_, i) => (
           <Skeleton key={i} className="h-12 w-full rounded-xl" />
@@ -47,9 +47,9 @@ export const FriendLeaderboard = ({ entries, isLoading, currentUserId }: FriendL
   if (entries.length === 0) {
     return (
       <div className="bg-card rounded-2xl p-6 text-center">
-        <Users className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-        <p className="text-muted-foreground">还没有好友</p>
-        <p className="text-sm text-muted-foreground mt-1">添加好友来比较进度！</p>
+        <Trophy className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+        <p className="text-muted-foreground">暂无玩家数据</p>
+        <p className="text-sm text-muted-foreground mt-1">开始游戏加入排行榜！</p>
       </div>
     );
   }
@@ -58,7 +58,7 @@ export const FriendLeaderboard = ({ entries, isLoading, currentUserId }: FriendL
     <div className="bg-card rounded-2xl p-4">
       <div className="flex items-center gap-2 mb-4">
         <Trophy className="w-5 h-5 text-primary" />
-        <h3 className="font-bold text-foreground">好友排行榜</h3>
+        <h3 className="font-bold text-foreground">玩家排行榜</h3>
       </div>
 
       <div className="space-y-2">

@@ -246,6 +246,16 @@ export type Database = {
           username: string
         }[]
       }
+      get_global_leaderboard: {
+        Args: never
+        Returns: {
+          coins: number
+          max_level: number
+          rank: number
+          user_id: string
+          username: string
+        }[]
+      }
       purchase_powerup: {
         Args: { p_powerup_id: string; p_price: number }
         Returns: Json
