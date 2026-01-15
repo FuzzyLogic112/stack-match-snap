@@ -48,23 +48,15 @@ export const useFriends = () => {
   const fetchPendingRequests = useCallback(async () => {
     if (!user) return;
 
-    const { data, error } = await supabase
-      .from('friendships')
-      .select('id, requester_id, created_at')
-      .eq('addressee_id', user.id)
-      .eq('status', 'pending');
+    // Use secure RPC that bypasses RLS to fetch requester usernames
+    const { data, error } = await supabase.rpc('get_pending_friend_requests');
 
     if (!error && data) {
-      // Fetch usernames for pending requests
-      const userIds = data.map(r => r.requester_id);
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, username')
-        .in('id', userIds);
-
-      const requestsWithNames = data.map(request => ({
-        ...request,
-        username: profiles?.find(p => p.id === request.requester_id)?.username || '未知用户'
+      const requestsWithNames = data.map((request: { id: string; requester_id: string; requester_username: string; created_at: string }) => ({
+        id: request.id,
+        requester_id: request.requester_id,
+        username: request.requester_username || '未知用户',
+        created_at: request.created_at
       }));
 
       setPendingRequests(requestsWithNames);

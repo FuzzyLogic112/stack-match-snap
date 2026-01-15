@@ -256,6 +256,15 @@ export type Database = {
           username: string
         }[]
       }
+      get_pending_friend_requests: {
+        Args: never
+        Returns: {
+          created_at: string
+          id: string
+          requester_id: string
+          requester_username: string
+        }[]
+      }
       purchase_powerup: {
         Args: { p_powerup_id: string; p_price: number }
         Returns: Json
