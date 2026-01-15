@@ -87,9 +87,15 @@ export const useLeaderboard = () => {
       return { error: new Error('玩家名称包含无效字符') };
     }
     
+    // Get current user for RLS compliance
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return { error: new Error('请先登录') };
+    }
+    
     const { error } = await supabase
       .from('leaderboard')
-      .insert([{ player_name: trimmedName, score }]);
+      .insert([{ player_name: trimmedName, score, user_id: user.id }]);
 
     if (!error) {
       await fetchLeaderboard(timeFilter);
