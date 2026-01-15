@@ -1,23 +1,20 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGameLogic } from '@/hooks/useGameLogic';
-import { useLeaderboard } from '@/hooks/useLeaderboard';
 import { useAuth } from '@/hooks/useAuth';
+import { useFriends } from '@/hooks/useFriends';
 import { GameBoard } from '@/components/game/GameBoard';
 import { Tray } from '@/components/game/Tray';
 import { GameOverlay } from '@/components/game/GameOverlay';
 import { GameHeader } from '@/components/game/GameHeader';
-import { Leaderboard } from '@/components/game/Leaderboard';
-import { ScoreSubmitDialog } from '@/components/game/ScoreSubmitDialog';
+import { FriendLeaderboard } from '@/components/friends/FriendLeaderboard';
 import { toast } from 'sonner';
 
 const Index = () => {
   const navigate = useNavigate();
   const { user, profile, loading, signOut } = useAuth();
   const { tiles, tray, gameStatus, score, selectTile, restartGame } = useGameLogic();
-  const { leaderboard, isLoading, timeFilter, changeTimeFilter, submitScore } = useLeaderboard();
-  const [showScoreDialog, setShowScoreDialog] = useState(false);
-  const [pendingScore, setPendingScore] = useState(0);
+  const { friendLeaderboard, isLoading, refreshLeaderboard } = useFriends();
 
   useEffect(() => {
     if (!loading && !user) {
@@ -25,34 +22,7 @@ const Index = () => {
     }
   }, [user, loading, navigate]);
 
-  const handleGameEnd = (finalScore: number) => {
-    if (finalScore > 0) {
-      setPendingScore(finalScore);
-      setShowScoreDialog(true);
-    }
-  };
-
   const handleRestart = () => {
-    if (gameStatus !== 'playing' && score > 0 && !showScoreDialog) {
-      handleGameEnd(score);
-    } else {
-      restartGame();
-    }
-  };
-
-  const handleScoreSubmit = async (playerName: string) => {
-    const { error } = await submitScore(playerName, pendingScore);
-    if (error) {
-      toast.error('Failed to save score. Please try again.');
-    } else {
-      toast.success('Score saved to leaderboard!');
-    }
-    setShowScoreDialog(false);
-    restartGame();
-  };
-
-  const handleScoreDialogClose = () => {
-    setShowScoreDialog(false);
     restartGame();
   };
 
@@ -97,25 +67,17 @@ const Index = () => {
           Tap unblocked tiles to move them to the tray. Match 3 to clear!
         </p>
 
-        <Leaderboard 
-          entries={leaderboard} 
+        <FriendLeaderboard 
+          entries={friendLeaderboard} 
           isLoading={isLoading} 
-          timeFilter={timeFilter}
-          onTimeFilterChange={changeTimeFilter}
+          currentUserId={user.id}
         />
       </div>
 
       <GameOverlay 
         status={gameStatus} 
         score={score} 
-        onRestart={() => handleGameEnd(score)} 
-      />
-
-      <ScoreSubmitDialog
-        isOpen={showScoreDialog}
-        score={pendingScore}
-        onSubmit={handleScoreSubmit}
-        onClose={handleScoreDialogClose}
+        onRestart={restartGame} 
       />
     </div>
   );
