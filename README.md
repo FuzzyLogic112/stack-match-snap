@@ -1,73 +1,62 @@
-# Welcome to your Lovable project
+# Stack Match Snap · 叠叠消
 
-## Project info
+羊了个羊玩法的三消叠叠乐网页游戏：点击没被压住的方块放进底部托盘，凑齐 3 个相同图案即消除，清空棋盘过关。带金币、道具、每日挑战、好友排行和成就系统。
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## 功能
 
-## How can I edit this code?
+| 模块 | 说明 |
+| --- | --- |
+| 关卡 | 简单 / 普通 / 困难三档，每档 20 关，共 60 关；层数、方块数、图案种类逐关递增，困难档是深层高密度的“羊了个羊”式布局 |
+| 托盘 | 7 格，满了即失败 |
+| 道具商店 | 用过关获得的金币购买：洗牌、撤销、移除 3 个、提示 |
+| 每日挑战 | 每天一关，连续完成有额外金币加成 |
+| 排行榜 | 提交成绩到全局排行榜；好友排行榜 |
+| 好友 | 搜索用户、发送 / 处理好友请求 |
+| 成就 | 达成条件自动解锁并弹出提示 |
+| 反馈 | 粒子特效、震屏、彩纸、音效与背景音乐 |
 
-There are several ways of editing your application.
+## 技术栈
 
-**Use Lovable**
+- React 18 + TypeScript + Vite
+- Tailwind CSS + shadcn/ui
+- Supabase：账号登录、玩家资料、排行榜、每日挑战、好友与成就（表结构见 `supabase/migrations/`）
+- 项目最初由 [Lovable](https://lovable.dev) 生成
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+## 本地运行
 
-Changes made via Lovable will be committed automatically to this repo.
+需要 Node.js 18 以上。
 
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+```bash
+npm install
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+Supabase 连接信息在根目录 `.env`：
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+```env
+VITE_SUPABASE_URL=...
+VITE_SUPABASE_PUBLISHABLE_KEY=...
+VITE_SUPABASE_PROJECT_ID=...
+```
 
-**Use GitHub Codespaces**
+想接自己的 Supabase 项目，把这三项换成你的，再依次执行 `supabase/migrations/` 下的 SQL 建表即可。
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## 目录
 
-## What technologies are used for this project?
+```
+src/
+├── pages/        # 首页、关卡选择、游戏、商店、每日挑战、好友、成就、登录
+├── components/   # game（棋盘/方块/托盘）、friends、achievements、effects
+├── hooks/        # useGameLogic 游戏核心逻辑、useAuth、useLeaderboard 等
+├── config/       # levels.ts 关卡生成、powerups.ts 道具
+└── integrations/supabase/
+supabase/migrations/  # 数据库表结构
+```
 
-This project is built with:
+## 其他命令
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+```bash
+npm run build     # 生产构建，输出到 dist/
+npm run preview   # 预览构建结果
+npm run lint      # ESLint 检查
+```
